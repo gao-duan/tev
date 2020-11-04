@@ -25,6 +25,3 @@
 [submodule "dependencies/clip"]
 	path = dependencies/clip
 	url = https://github.com/Tom94/clip
-[submodule "dependencies/cnpy"]
-	path = dependencies/cnpy
-	url = https://github.com/rogersce/cnpy
