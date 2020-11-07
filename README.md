@@ -2,6 +2,14 @@
 
 ![](https://github.com/tom94/tev/workflows/CI/badge.svg)
 
+
+## New features
+-  Add the support of Numpy array. (np.float16/float32 as HDR image, np.uint8 as LDR image)
+- [todo] image computation (add, multiply, etc.)
+- [todo] display channels of image
+- [todo] image resize
+- [todo] other Error metric (SSIM, PSNR, LPips, etc.)
+
 A high dynamic range (HDR) image comparison tool for graphics people. __tev__ allows viewing images through various tonemapping operators and inspecting the values of individual pixels. Often, it is important to find exact differences between pairs of images. For this purpose, __tev__ allows rapidly switching between opened images and visualizing various error metrics (L1, L2, and relative versions thereof). To avoid clutter, opened images and their layers can be filtered by keywords.
 
 While the predominantly supported file format is OpenEXR certain other types of images can also be loaded. The following file formats are currently supported:
