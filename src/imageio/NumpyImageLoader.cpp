@@ -56,18 +56,18 @@ ImageData NumpyImageLoader::load(std::istream& iStream, const filesystem::path& 
     char type = header[pos + 1];
     int size = atoi(header.substr(pos + 2, 1).c_str()); // assume size <= 8 bytes
     if (type != 'f' && type != 'u' && size > 4) {
-        throw invalid_argument{ tfm::format("Numpy image load error") };
+        throw invalid_argument{ tfm::format("Numpy image load error, type is neither `f` or `u`") };
     }
 
     // Order
     pos = header.find("fortran_order");
     if (pos == std::string::npos)
-        throw invalid_argument{ tfm::format("Numpy image load error") };
+        throw invalid_argument{ tfm::format("Numpy image load error, no order information") };
     pos += 16;
     bool fortranOrder = header.substr(pos, 4) == "True" ? true : false;
 
     if (fortranOrder) // Only supports C order.
-        throw invalid_argument{ tfm::format("Numpy image load error") };
+        throw invalid_argument{ tfm::format("Numpy image load error, only C order is supported now") };
 
 
     // Shape
@@ -84,7 +84,7 @@ ImageData NumpyImageLoader::load(std::istream& iStream, const filesystem::path& 
     int w = 0, h = 0, ch = 1;
     if (shape.size() < 2 || shape.size() > 4) // support 2/3/4
     {
-        throw invalid_argument{ tfm::format("Numpy image load error, support channles: 2/3/4") };
+        throw invalid_argument{ tfm::format("Numpy image load error, only supports numpy with shape length 2/3/4") };
     }
     if (shape.size() == 2)
     {
@@ -106,14 +106,14 @@ ImageData NumpyImageLoader::load(std::istream& iStream, const filesystem::path& 
 
     }
     if (ch > 4) // at most 4 channel
-        throw invalid_argument{ tfm::format("Numpy image load error") };
+        throw invalid_argument{ tfm::format("Numpy image load error, only at most 4 channels is supported") };
     img_size = Vector2i(w, h);
 
     // load data
     std::vector<char> data;
     data.resize(w * h * ch * size);
     if (!iStream.read(data.data(), w * h * ch * size))
-        throw invalid_argument{ tfm::format("Numpy image load error") };
+        throw invalid_argument{ tfm::format("Numpy image load error, cannot read the data region") };
 
     // convert raw data into float array
 

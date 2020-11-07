@@ -6,6 +6,7 @@
 #include <tev/imageio/ExrImageSaver.h>
 #include <tev/imageio/StbiHdrImageSaver.h>
 #include <tev/imageio/StbiLdrImageSaver.h>
+#include <tev/imageio/NumpyImageSaver.h>
 
 #include <vector>
 
@@ -19,6 +20,7 @@ const vector<unique_ptr<ImageSaver>>& ImageSaver::getSavers() {
         imageSavers.emplace_back(new ExrImageSaver());
         imageSavers.emplace_back(new StbiHdrImageSaver());
         imageSavers.emplace_back(new StbiLdrImageSaver());
+        imageSavers.emplace_back(new NumpyImageSaver());
         return imageSavers;
     };
 
