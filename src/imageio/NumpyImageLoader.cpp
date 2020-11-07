@@ -3,7 +3,7 @@
 
 #include <tev/imageio/NumpyImageLoader.h>
 #include <tev/ThreadPool.h>
-
+#include <regex>
 
 using namespace Eigen;
 using namespace filesystem;
@@ -27,7 +27,9 @@ bool NumpyImageLoader::canLoadFile(std::istream& iStream) const
 ImageData NumpyImageLoader::load(std::istream& iStream, const filesystem::path& path, const std::string& channelSelector) const
 {
     ImageData result;
+    ThreadPool threadPool;
 
+    Vector2i img_size;
 
     // parse npy header
     std::string header;
@@ -37,188 +39,142 @@ ImageData NumpyImageLoader::load(std::istream& iStream, const filesystem::path& 
         throw invalid_argument{ tfm::format("Invalid numpy image") };
     }
 
-    /*
-    std::ifstream file(fn.c_str(), std::ios::binary);
-                if (!file) return false;
 
-                std::string header;
-                std::getline(file, header);
-                if (header.length() < 10 || header.substr(1, 5) != "NUMPY")
-                    return false;
+    // Format
+    auto pos = header.find("descr");
+    if (pos == std::string::npos) {
+        throw invalid_argument{ tfm::format("Numpy image cannot find `descr` in the header.") };
+    }
 
-                // Format
-                auto pos = header.find("descr");
-                if (pos == std::string::npos)
-                    return false;
-                pos += 9;
-                bool littleEndian = (header[pos] == '<' || header[pos] == '|' ? true : false);
-                if (!littleEndian)
-                    return false; // Only supports little endian.
-                char type = header[pos + 1];
-                int size = atoi(header.substr(pos + 2, 1).c_str()); // assume size <= 8 bytes
-                if (type != 'f' && type != 'u' && size > 4)
-                    return false;
+    pos += 9;
 
-                // Order
-                pos = header.find("fortran_order");
-                if (pos == std::string::npos)
-                    return false;
-                pos += 16;
-                bool fortranOrder = header.substr(pos, 4) == "True" ? true : false;
+    bool littleEndian = (header[pos] == '<' || header[pos] == '|' ? true : false);
+    if (!littleEndian) {
+        throw invalid_argument{ tfm::format("Numpy image only supports little endian.") };
+    }
 
-                if (fortranOrder) // Only supports C order.
-                    return false;
+    char type = header[pos + 1];
+    int size = atoi(header.substr(pos + 2, 1).c_str()); // assume size <= 8 bytes
+    if (type != 'f' && type != 'u' && size > 4) {
+        throw invalid_argument{ tfm::format("Numpy image load error") };
+    }
 
-                // Shape
-                auto offset = header.find("(") + 1;
-                auto shapeString = header.substr(offset, header.find(")") - offset);
-                std::regex regex("[0-9][0-9]*");
-                std::smatch match;
-                std::vector<int> shape;
-                while (std::regex_search(shapeString, match, regex))
-                {
-                    shape.push_back(std::stoi(match[0].str()));
-                    shapeString = match.suffix().str();
-                }
-                int w = 0, h = 0, ch = 1;
-                if (shape.size() < 2 || shape.size() > 4) // support 2/3/4
-                {
-                    return false;
-                }
-                if (shape.size() == 2)
-                {
-                    h = shape[0];
-                    w = shape[1];
-                    ch = 1;
-                }
-                else if (shape.size() == 3)
-                {
-                    h = shape[0];
-                    w = shape[1];
-                    ch = shape[2];
-                }
-                else if (shape.size() == 4)
-                {
-                    //if (shape[0] > 1) // single image only
-                    //	return false;
-                    h = shape[1];
-                    w = shape[2];
-                    ch = shape[3];
+    // Order
+    pos = header.find("fortran_order");
+    if (pos == std::string::npos)
+        throw invalid_argument{ tfm::format("Numpy image load error") };
+    pos += 16;
+    bool fortranOrder = header.substr(pos, 4) == "True" ? true : false;
 
-                }
-                if (ch > 4) // at most 4 channel
-                    return false;
-
-                std::vector<char> data;
-                data.resize(w * h * ch * size);
-                if (!file.read(data.data(), w * h * ch * size))
-                    return false;
-
-                if (!dstImg.Create(w, h))
-                    return false;
-
-                if (type == 'f' && size == 2)
-                {
-                    if (ch == 1)
-                    {
-                        ig::CImage_1c16f tmpImg;
-                        if (!tmpImg.Create(w, h, w * ch * size, data.data()))
-                            return false;
-                        ig::ConvertImageType(tmpImg, dstImg);
-                    }
-                    else if (ch == 2)
-                    {
-                        ig::CImage_2c16f tmpImg;
-                        if (!tmpImg.Create(w, h, w * ch * size, data.data()))
-                            return false;
-                        ig::ConvertImageType(tmpImg, dstImg);
-                    }
-                    else if (ch == 3)
-                    {
-                        ig::CImage_3c16f tmpImg;
-                        if (!tmpImg.Create(w, h, w * ch * size, data.data()))
-                            return false;
-                        ig::ConvertImageType(tmpImg, dstImg);
-                    }
-                    else if (ch == 4)
-                    {
-                        ig::CImage_4c16f tmpImg;
-                        if (!tmpImg.Create(w, h, w * ch * size, data.data()))
-                            return false;
-                        ig::ConvertImageType(tmpImg, dstImg);
-                    }
-                }
-                else if (type == 'f' && size == 4)
-                {
-                    if (ch == 1)
-                    {
-                        ig::CImage_1c32f tmpImg;
-                        if (!tmpImg.Create(w, h, w * ch * size, data.data()))
-                            return false;
-                        ig::ConvertImageType(tmpImg, dstImg);
-                    }
-                    else if (ch == 2)
-                    {
-                        ig::CImage_2c32f tmpImg;
-                        if (!tmpImg.Create(w, h, w * ch * size, data.data()))
-                            return false;
-                        ig::ConvertImageType(tmpImg, dstImg);
-                    }
-                    else if (ch == 3)
-                    {
-                        ig::CImage_3c32f tmpImg;
-                        if (!tmpImg.Create(w, h, w * ch * size, data.data()))
-                            return false;
-                        ig::ConvertImageType(tmpImg, dstImg);
-                    }
-                    else if (ch == 4)
-                    {
-                        ig::CImage_4c32f tmpImg;
-                        if (!tmpImg.Create(w, h, w * ch * size, data.data()))
-                            return false;
-                        ig::ConvertImageType(tmpImg, dstImg);
-                    }
-                }
-                else if (type == 'u' && size == 1)
-                {
-                    if (ch == 1)
-                    {
-                        ig::CImage_1c8u tmpImg;
-                        if (!tmpImg.Create(w, h, w * ch * size, data.data()))
-                            return false;
-                        ig::ConvertImageType(tmpImg, dstImg);
-                    }
-                    else if (ch == 2)
-                    {
-                        ig::CImage_2c8u tmpImg;
-                        if (!tmpImg.Create(w, h, w * ch * size, data.data()))
-                            return false;
-                        ig::ConvertImageType(tmpImg, dstImg);
-                    }
-                    else if (ch == 3)
-                    {
-                        ig::CImage_3c8u tmpImg;
-                        if (!tmpImg.Create(w, h, w * ch * size, data.data()))
-                            return false;
-                        ig::ConvertImageType(tmpImg, dstImg);
-                    }
-                    else if (ch == 4)
-                    {
-                        ig::CImage_4c8u tmpImg;
-                        if (!tmpImg.Create(w, h, w * ch * size, data.data()))
-                            return false;
-                        ig::ConvertImageType(tmpImg, dstImg);
-                    }
-                }
-                else
-                {
-                    return false; // not supported.
-                }
-    */
+    if (fortranOrder) // Only supports C order.
+        throw invalid_argument{ tfm::format("Numpy image load error") };
 
 
+    // Shape
+    auto offset = header.find("(") + 1;
+    auto shapeString = header.substr(offset, header.find(")") - offset);
+    std::regex regex("[0-9][0-9]*");
+    std::smatch match;
+    std::vector<int> shape;
+    while (std::regex_search(shapeString, match, regex))
+    {
+        shape.push_back(std::stoi(match[0].str()));
+        shapeString = match.suffix().str();
+    }
+    int w = 0, h = 0, ch = 1;
+    if (shape.size() < 2 || shape.size() > 4) // support 2/3/4
+    {
+        throw invalid_argument{ tfm::format("Numpy image load error, support channles: 2/3/4") };
+    }
+    if (shape.size() == 2)
+    {
+        h = shape[0];
+        w = shape[1];
+        ch = 1;
+    }
+    else if (shape.size() == 3)
+    {
+        h = shape[0];
+        w = shape[1];
+        ch = shape[2];
+    }
+    else if (shape.size() == 4)
+    {
+        h = shape[1];
+        w = shape[2];
+        ch = shape[3];
 
-    return ImageData();
+    }
+    if (ch > 4) // at most 4 channel
+        throw invalid_argument{ tfm::format("Numpy image load error") };
+    img_size = Vector2i(w, h);
+
+    // load data
+    std::vector<char> data;
+    data.resize(w * h * ch * size);
+    if (!iStream.read(data.data(), w * h * ch * size))
+        throw invalid_argument{ tfm::format("Numpy image load error") };
+
+    // convert raw data into float array
+
+    std::vector<float> float_data;
+    float_data.resize(w * h * ch);
+
+    // type='f' size =2 ==> float16
+    // type='f' size =4 ==> float32
+    // type='u' size = 1 ==> uint8
+    if (type == 'f' && size == 4) {
+        const float * new_data = reinterpret_cast<const float*>(data.data());
+        for (size_t i = 0; i < float_data.size(); ++i) {
+            float_data[i] = new_data[i];
+        }
+    }
+    else if (type == 'f' && size == 2) {
+        const ::half* new_data = reinterpret_cast<const ::half*>(data.data());
+        for (size_t i = 0; i < float_data.size(); ++i) {
+            float_data[i] = float(new_data[i]);
+        }
+    }
+    else if (type == 'u' && size == 1) {
+        for (size_t i = 0; i < float_data.size(); ++i) {
+            float_data[i] = float((unsigned char)(data[i])) / 255.0f;
+        }
+    }
+
+    vector<Channel> channels = makeNChannels(ch, img_size);
+
+    threadPool.parallelFor<DenseIndex>(0, img_size.y(), [&](DenseIndex y) {
+        for (int x = 0; x < img_size.x(); ++x) {
+            int baseIdx = (y * img_size.x() + x) * ch;
+            for (int c = 0; c < ch; ++c) {
+                float val = float_data[baseIdx + c];
+                // Flip image vertically due to PFM format
+                channels[c].at({ x, y }) = val;
+            }
+        }
+    });
+
+    vector<pair<size_t, size_t>> matches;
+    for (size_t i = 0; i < channels.size(); ++i) {
+        size_t matchId;
+        if (matchesFuzzy(channels[i].name(), channelSelector, &matchId)) {
+            matches.emplace_back(matchId, i);
+        }
+    }
+
+    if (!channelSelector.empty()) {
+        sort(begin(matches), end(matches));
+    }
+
+    for (const auto& match : matches) {
+        result.channels.emplace_back(move(channels[match.second]));
+    }
+
+    // NPY can not contain layers, so all channels simply reside
+    // within a topmost root layer.
+    result.layers.emplace_back("");
+
+    return result;
 }
 
 TEV_NAMESPACE_END
