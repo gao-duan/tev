@@ -7,6 +7,7 @@
 #include <tev/imageio/ImageLoader.h>
 #include <tev/imageio/PfmImageLoader.h>
 #include <tev/imageio/StbiImageLoader.h>
+#include <tev/imageio/NumpyImageLoader.h>
 
 using namespace Eigen;
 using namespace std;
@@ -18,6 +19,7 @@ const vector<unique_ptr<ImageLoader>>& ImageLoader::getLoaders() {
         vector<unique_ptr<ImageLoader>> imageLoaders;
         imageLoaders.emplace_back(new ExrImageLoader());
         imageLoaders.emplace_back(new PfmImageLoader());
+        imageLoaders.emplace_back(new NumpyImageLoader());
         imageLoaders.emplace_back(new ClipboardImageLoader());
         imageLoaders.emplace_back(new EmptyImageLoader());
         imageLoaders.emplace_back(new StbiImageLoader());

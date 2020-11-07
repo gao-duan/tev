@@ -1501,6 +1501,8 @@ void ImageViewer::openImageDialog() {
         {"exr",  "OpenEXR image"},
         {"hdr",  "HDR image"},
         {"pfm",  "Portable Float Map image"},
+        {"npy",  "Numpy image"},
+
         // LDR formats
         {"bmp",  "Bitmap Image File"},
         {"gif",  "Graphics Interchange Format image"},
@@ -1534,6 +1536,7 @@ void ImageViewer::saveImageDialog() {
     {
         {"exr",  "OpenEXR image"},
         {"hdr",  "HDR image"},
+        {"npy",  "Numpy image"},
         {"bmp",  "Bitmap Image File"},
         {"jpg",  "JPEG image"},
         {"jpeg", "JPEG image"},

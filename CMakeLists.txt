@@ -105,6 +105,8 @@ set(TEV_SOURCES
     include/tev/imageio/StbiHdrImageSaver.h src/imageio/StbiHdrImageSaver.cpp
     include/tev/imageio/StbiImageLoader.h src/imageio/StbiImageLoader.cpp
     include/tev/imageio/StbiLdrImageSaver.h src/imageio/StbiLdrImageSaver.cpp
+    include/tev/imageio/NumpyImageLoader.h src/imageio/NumpyImageLoader.cpp
+    include/tev/imageio/NumpyImageSaver.h src/imageio/NumpyImageSaver.cpp
 
     include/tev/Channel.h src/Channel.cpp
     include/tev/Common.h src/Common.cpp
